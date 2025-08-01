@@ -1,0 +1,222 @@
+version: "3.9"
+
+services:
+  bitcoind:
+    image: ruimarinho/bitcoin-core:24.0
+    user: "1000:1000"
+    restart: unless-stopped
+    command:
+      - "-${BITCOIN_NETWORK:-mainnet}"
+      - "-fallbackfee=0.0002"
+      - "-txindex=1"
+      - "-prune=550"
+      - "-server=1"
+      - "-rpcbind=127.0.0.1"
+      - "-rpcauth=/run/secrets/bitcoind-rpcauth"
+      - "-disablewallet=1"
+    volumes:
+      - bitcoind-data:/home/bitcoin/.bitcoin:ro # ReadOnly-Mount für Sicherheit
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "bitcoin-cli", "-${BITCOIN_NETWORK:-mainnet}", "getblockchaininfo", "|", "jq", ".verificationprogress > 0.99"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "1g"
+
+  lnd:
+    image: lightninglabs/lnd:v0.17.0
+    user: "1000:1000"
+    restart: unless-stopped
+    command:
+      - "--bitcoin.active"
+      - "--bitcoin.node=bitcoind"
+      - "--bitcoin.${BITCOIN_NETWORK:-mainnet}"
+      - "--bitcoin.rpchost=bitcoind"
+      - "--tlscertpath=/root/.lnd/tls.cert"
+      - "--watchtower.active"
+    env_file:
+      - .env
+    secrets:
+      - lnd-rpcuser
+      - lnd-rpcpass
+    volumes:
+      - lnd-data:/root/.lnd:ro # ReadOnly-Mount für Sicherheit
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "lncli", "--network=${BITCOIN_NETWORK:-mainnet}", "getinfo"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "1g"
+
+  nostr-relay:
+    image: fiatjaf/nostr-relay
+    user: "1000:1000"
+    restart: unless-stopped
+    environment:
+      - RELAY_RATE_LIMIT=100
+      - RELAY_PRUNE_AGE_DAYS=7
+    volumes:
+      - nostr-data:/data:ro # ReadOnly-Mount für Sicherheit
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "512m"
+
+  backend:
+    build: ./backend
+    user: "1000:1000"
+    restart: unless-stopped
+    env_file: .env
+    secrets:
+      - bitcoind-rpcauth
+      - nostr-private-key
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+      lnd:
+        condition: service_healthy
+      nostr-relay:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "1g"
+
+  nginx:
+    image: nginx:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - certs:/etc/nginx/certs
+    networks:
+      - internal
+    depends_on:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "512m"
+
+  frontend:
+    build: ./frontend
+    user: "1000:1000"
+    restart: unless-stopped
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "512m"
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "512m"
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml
+    ports:
+      - "9093:9093"
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "512m"
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    networks:
+      - internal
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "512m"
+
+volumes:
+  bitcoind-data:
+  lnd-data:
+  nostr-data:
+  certs:
+
+networks:
+  internal:
+    driver: bridge
+    internal: true
+
+secrets:
+  bitcoind-rpcauth:
+    external: true
+  lnd-rpcuser:
+    external: true
+  lnd-rpcpass:
+    external: true
+  nostr-private-key:
+    external: true
