@@ -1,0 +1,41 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Benötigt bitcoin-prometheus-exporter
+  # - job_name: 'bitcoind'
+  #   static_configs:
+  #     - targets: ['bitcoind:9332']
+  #   metrics_path: '/metrics'
+  #   scheme: 'http'
+  #   params:
+  #     module: ['bitcoind']
+
+  - job_name: 'lnd'
+    static_configs:
+      - targets: ['lnd:10009']
+        labels:
+          instance: 'lnd'
+    metrics_path: '/metrics'
+    scheme: 'http'
+
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['backend:3001']
+        labels:
+          instance: 'backend'
+    metrics_path: '/metrics'
+
+  - job_name: 'nostr-relay'
+    static_configs:
+      - targets: ['nostr-relay:8080']
+        labels:
+          instance: 'nostr-relay'
+    metrics_path: '/metrics'
+
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+        labels:
+          instance: 'alertmanager'
