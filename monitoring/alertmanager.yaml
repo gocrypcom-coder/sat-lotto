@@ -1,0 +1,77 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.example.com:587'  # TODO: Konfiguriere SMTP-Server
+  smtp_from: 'alertmanager@satlotto.com'
+  smtp_auth_username: 'username'  # TODO: SMTP-Benutzer
+  smtp_auth_password: 'password'  # TODO: SMTP-Passwort
+
+route:
+  receiver: 'team-email'
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 3h
+
+receivers:
+  - name: 'team-email'
+    email_configs:
+      - to: 'ops@sat-lotto.com'
+        send_resolved: true
+
+groups:
+  - name: bitcoin-lotto
+    rules:
+      # Benötigt bitcoin-prometheus-exporter
+      - alert: BitcoindNotSynced
+        expr: bitcoin_sync_progress < 0.99
+        for: 5m
+        labels:
+          severity: 'critical'
+        annotations:
+          summary: "Bitcoin Core ist nicht vollständig synchronisiert."
+        send_resolved: true
+
+      - alert: HighAPILatency
+        expr: response_time_histogram{job="backend"} > 1
+        for: 2m
+        labels:
+          severity: 'warning'
+        annotations:
+          summary: "Hohe API-Latenz im Backend."
+        send_resolved: true
+
+      - alert: LNDNoChannels
+        expr: lnd_channels_count == 0
+        for: 5m
+        labels:
+          severity: 'critical'
+        annotations:
+          summary: "Keine offenen Lightning-Channels."
+        send_resolved: true
+
+      - alert: DBConnectionError
+        expr: up{job="backend"} == 0
+        for: 2m
+        labels:
+          severity: 'critical'
+        annotations:
+          summary: "Backend-Datenbank nicht erreichbar."
+        send_resolved: true
+
+      - alert: NostrRelayLatency
+        expr: nostr_relay_response_time{job="nostr-relay"} > 2
+        for: 2m
+        labels:
+          severity: 'warning'
+        annotations:
+          summary: "Hohe Latenz im Nostr-Relay."
+        send_resolved: true
+
+      - alert: TicketThroughputError
+        expr: rate(sat_lotto_tickets_total[5m]) < 0.1
+        for: 5m
+        labels:
+          severity: 'warning'
+        annotations:
+          summary: "Niedriger Ticket-Durchsatz."
+        send_resolved: true
