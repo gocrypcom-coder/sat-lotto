@@ -1,26 +1,22 @@
+# sat-lotto/monitoring/prometheus.yml
+
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  # Fügt den Alertmanager hinzu, den wir zuvor konfiguriert haben
+  alerting:
+    alertmanagers:
+      - static_configs:
+          - targets: ['alertmanager:9093']
 
 scrape_configs:
-  # Benötigt bitcoin-prometheus-exporter
-  # - job_name: 'bitcoind'
-  #   static_configs:
-  #     - targets: ['bitcoind:9332']
-  #   metrics_path: '/metrics'
-  #   scheme: 'http'
-  #   params:
-  #     module: ['bitcoind']
+  # JOBS FÜR LOKALE DIENSTE
 
-  - job_name: 'lnd'
-    static_configs:
-      - targets: ['lnd:10009']
-        labels:
-          instance: 'lnd'
-    metrics_path: '/metrics'
-    scheme: 'http'
+  # job_name: 'bitcoind' - ENTFERNT (Ersetzt durch Blockstream.info API)
+  # job_name: 'lnd' - ENTFERNT (Ersetzt durch Blockstream Greenlight SDK)
 
   - job_name: 'backend'
+    # Überwacht den Node.js Backend-Service auf Port 3001 für die Sat-Lotto-Metriken
     static_configs:
       - targets: ['backend:3001']
         labels:
@@ -28,13 +24,18 @@ scrape_configs:
     metrics_path: '/metrics'
 
   - job_name: 'nostr-relay'
+    # Überwacht das lokale Nostr-Relay auf Port 8080
     static_configs:
       - targets: ['nostr-relay:8080']
         labels:
           instance: 'nostr-relay'
     metrics_path: '/metrics'
+    # Hinweis: Je nach verwendetem Nostr-Image ist der Metrik-Pfad evtl. /metrics oder es gibt keinen.
+
+  # JOBS FÜR INFRASTRUKTUR
 
   - job_name: 'alertmanager'
+    # Überwacht den Alertmanager selbst
     static_configs:
       - targets: ['alertmanager:9093']
         labels:
