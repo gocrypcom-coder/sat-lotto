@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sat-Lotto | Multi-Tier Lightning-Lotto</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Angepasste Schriftart für den Bitcoin-Vibe */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        body { font-family: 'Roboto Mono', monospace; background-color: #0d0e10; color: #f5f5f5; }
+        .sat-yellow { color: #f7931a; }
+        .sat-bg { background-color: #1a1a1a; }
+        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1), 0 0 10px rgba(247, 147, 26, 0.2); }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <header class="p-4 border-b border-gray-800 flex justify-between items-center">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-3">
+            <div class="text-xs font-semibold px-2 py-1 rounded bg-gray-700 text-gray-300">
+                Block: <span id="current-block-height">Wird geladen...</span>
+            </div>
+            <h1 class="text-xl font-bold sat-yellow">SAT-LOTTO</h1>
+        </div>
+        <button class="text-gray-400 hover:text-sat-yellow">Verifizierung</button>
+    </header>
+
+    <main class="p-4 md:p-8 max-w-2xl mx-auto">
+        <h2 class="text-3xl font-bold mb-6 text-center">Wähle deinen Einsatz</h2>
+
+        <section id="round-tiers" class="space-y-6">
+
+            <div data-amount="100" data-round="1" class="round-card sat-bg p-5 rounded-xl border border-gray-700 hover:border-orange-500 cursor-pointer transition-all card-shadow">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-xl font-bold text-gray-300">⚡️ BRONZE TIER (100 SATs)</h3>
+                    <span class="px-3 py-1 text-sm font-semibold rounded-full bg-green-900 text-green-300">PENDING</span>
+                </div>
+                <div class="flex justify-between items-end">
+                    <div>
+                        <p class="text-sm text-gray-400">JACKPOT (99% Pool)</p>
+                        <p class="text-4xl font-extrabold sat-yellow">2,574 Sats</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-400">Teilnehmer</p>
+                        <p class="text-lg font-bold">25 / UNBEGRENZT</p>
+                    </div>
+                </div>
+            </div>
+
+            <div data-amount="1000" data-round="2" class="round-card sat-bg p-5 rounded-xl border border-gray-700 hover:border-orange-500 cursor-pointer transition-all card-shadow bg-red-900/20">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-xl font-bold text-red-400">🚀 GOLD TIER (1,000 SATs)</h3>
+                    <span class="px-3 py-1 text-sm font-semibold rounded-full bg-red-900 border border-red-500 text-red-300">COUNTDOWN</span>
+                </div>
+                <div class="flex justify-between items-end">
+                    <div>
+                        <p class="text-sm text-gray-400">JACKPOT (99% Pool)</p>
+                        <p class="text-4xl font-extrabold sat-yellow">452,178 Sats</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-400">Ziehung in:</p>
+                        <p id="countdown-timer" class="text-lg font-bold text-red-300">23:45:01</p>
+                    </div>
+                </div>
+                <div class="text-center mt-3 pt-3 border-t border-gray-800">
+                    <p class="text-xs text-gray-500">Loskauf ist noch für 24 Stunden möglich (endet in Block #820,144)</p>
+                </div>
+            </div>
+            
+            <div data-amount="10000" data-round="3" class="round-card sat-bg p-5 rounded-xl border border-gray-700 hover:border-orange-500 cursor-pointer transition-all card-shadow">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-xl font-bold text-gray-300">💎 DIAMOND TIER (10,000 SATs)</h3>
+                    <span class="px-3 py-1 text-sm font-semibold rounded-full bg-green-900 text-green-300">PENDING</span>
+                </div>
+                <div class="flex justify-between items-end">
+                    <div>
+                        <p class="text-sm text-gray-400">JACKPOT (99% Pool)</p>
+                        <p class="text-4xl font-extrabold sat-yellow">1,820,900 Sats</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-400">Teilnehmer</p>
+                        <p class="text-lg font-bold">18 / UNBEGRENZT</p>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="mt-8 p-4 bg-gray-900 rounded-lg text-sm text-gray-400 border border-gray-700">
+            <p class="font-bold sat-yellow mb-1">AUTOMATISCHE AUSZAHLUNG</p>
+            <p>Ihre Lightning Address ist gleichzeitig Ihre Los-ID und Ihr Auszahlungsweg. Im Gewinnfall wird der Betrag sofort automatisch an Ihre Wallet gesendet. **Keine manuellen Anfragen nötig.**</p>
+        </section>
+
+    </main>
+
+    <div id="buy-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden">
+        <div class="sat-bg p-6 rounded-xl w-11/12 max-w-md border border-gray-700">
+            <h3 id="modal-title" class="text-2xl font-bold mb-2">Kaufe Lose (1,000 SATs)</h3>
+            <p class="text-gray-400 mb-6 text-sm">Runde #<span id="modal-round-id"></span> | Einsatz pro Los: <span id="modal-amount"></span> SATs</p>
+            
+            <div class="mb-5">
+                <label class="block text-sm font-semibold mb-2">1. Wie viele Lose möchten Sie kaufen?</label>
+                <div class="flex space-x-2">
+                    <input type="number" id="ticket-quantity" value="1" min="1" max="10" class="w-20 p-3 rounded bg-gray-900 border border-gray-700 text-white focus:outline-none focus:ring-1 focus:ring-sat-yellow text-center">
+                    <div class="flex-grow p-3 rounded bg-gray-900 border border-gray-700 text-white flex justify-between items-center">
+                        <span>Gesamtbetrag:</span>
+                        <span id="total-amount" class="font-bold sat-yellow">1,000 Sats</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-semibold mb-2">2. Ihre Lightning Address für die Auszahlung</label>
+                <input type="email" id="lightning-address" placeholder="z.B. user@walletofsatoshi.com" class="w-full p-3 rounded bg-gray-900 border border-gray-700 text-white focus:outline-none focus:ring-1 focus:ring-sat-yellow">
+                <p class="text-xs text-gray-500 mt-1">Stellen Sie sicher, dass dies eine gültige LNURL-pay Adresse ist (z.B. WOS, Alby, Zeus).</p>
+            </div>
+            
+            <button id="create-invoice-btn" class="w-full py-3 text-lg font-bold rounded bg-orange-600 hover:bg-orange-700 transition-colors text-black mb-4">
+                3. Rechnung erstellen & bezahlen
+            </button>
+            
+            <div id="invoice-step" class="mt-4 p-4 border border-green-700 rounded-lg bg-green-900/20 text-center hidden">
+                <h4 class="text-lg font-bold text-green-300 mb-3">Zahlen Sie <span id="payment-sats"></span> Sats</h4>
+                <div class="bg-white p-2 inline-block rounded-md">
+                    <svg viewBox="0 0 100 100" class="w-24 h-24"></svg>
+                </div>
+                <p class="text-sm text-gray-400 mt-2">Warten auf Zahlung...</p>
+            </div>
+
+            <button id="close-modal-btn" class="w-full py-2 mt-4 text-gray-500 hover:text-white">Abbrechen</button>
+        </div>
+    </div>
+
+    <script>
+        const roundCards = document.querySelectorAll('.round-card');
+        const modal = document.getElementById('buy-modal');
+        const closeModalButton = document.getElementById('close-modal-btn');
+        const quantityInput = document.getElementById('ticket-quantity');
+        const totalAmountSpan = document.getElementById('total-amount');
+        const modalTitle = document.getElementById('modal-title');
+        const modalAmount = document.getElementById('modal-amount');
+        const modalRoundId = document.getElementById('modal-round-id');
+        const createInvoiceBtn = document.getElementById('create-invoice-btn');
+        const blockHeightElement = document.getElementById('current-block-height');
+        
+        let currentTicketPrice = 0;
+        let currentRoundId = 0;
+
+        function updateTotalPrice() {
+            const quantity = parseInt(quantityInput.value) || 1;
+            const total = quantity * currentTicketPrice;
+            totalAmountSpan.textContent = total.toLocaleString() + ' Sats';
+        }
+
+        async function updateBlockHeight() {
+            try {
+                // ECHTER API-CALL ZUM BACKEND
+                const response = await fetch('/api/global/status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    blockHeightElement.textContent = data.currentBlock;
+                }
+
+            } catch (e) {
+                blockHeightElement.textContent = 'Fehler (API)';
+            }
+        }
+
+        setInterval(updateBlockHeight, 30000); 
+        updateBlockHeight(); 
+
+        roundCards.forEach(card => {
+            card.addEventListener('click', () => {
+                currentTicketPrice = parseInt(card.dataset.amount);
+                currentRoundId = parseInt(card.dataset.round);
+                
+                modalTitle.textContent = `Kaufe Lose (${currentTicketPrice.toLocaleString()} SATs)`;
+                modalAmount.textContent = currentTicketPrice.toLocaleString();
+                modalRoundId.textContent = currentRoundId;
+                
+                if (card.querySelector('.bg-red-900:not(.border-red-500)')) {
+                    alert('Loskauf in dieser Runde ist nicht mehr möglich oder befindet sich in der letzten Phase.');
+                    return;
+                }
+
+                quantityInput.value = 1;
+                updateTotalPrice();
+                modal.classList.remove('hidden');
+            });
+        });
+
+        quantityInput.addEventListener('input', updateTotalPrice);
+
+        closeModalButton.addEventListener('click', () => {
+            modal.classList.add('hidden');
+            document.getElementById('invoice-step').classList.add('hidden');
+            createInvoiceBtn.classList.remove('hidden');
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+
+        createInvoiceBtn.addEventListener('click', async () => {
+            const quantity = parseInt(quantityInput.value);
+            const address = document.getElementById('lightning-address').value;
+            const totalSats = quantity * currentTicketPrice;
+
+            if (!address || quantity < 1) {
+                alert('Bitte geben Sie eine gültige Lightning Address und mindestens ein Los an.');
+                return;
+            }
+
+            createInvoiceBtn.textContent = 'Rechnung wird erstellt...';
+            
+            try {
+                const response = await fetch('/api/ticket/buy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lightningAddress: address,
+                        ticketPrice: currentTicketPrice,
+                        quantity: quantity,
+                        round: currentRoundId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Fehler beim Erstellen der Rechnung.');
+                }
+
+                const data = await response.json();
+                const paymentRequest = data.paymentRequest;
+
+                document.getElementById('payment-sats').textContent = totalSats.toLocaleString();
+                document.getElementById('invoice-step').classList.remove('hidden');
+                createInvoiceBtn.classList.add('hidden');
+                createInvoiceBtn.textContent = '3. Rechnung erstellen & bezahlen'; 
+
+                // Im Live-System würden Sie hier WebLN/QR-Code für die Zahlung anzeigen
+                console.log(`Rechnung erstellt: ${paymentRequest}`);
+                alert(`Zahlen Sie jetzt ${totalSats} Sats. Rechnung: ${paymentRequest}`);
+
+
+            } catch (error) {
+                alert(`Fehler: ${error.message}`);
+                createInvoiceBtn.textContent = '3. Rechnung erstellen & bezahlen'; 
+                document.getElementById('invoice-step').classList.add('hidden');
+                createInvoiceBtn.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
