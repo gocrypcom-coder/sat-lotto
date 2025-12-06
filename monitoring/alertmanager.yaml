@@ -1,6 +1,6 @@
 global:
   resolve_timeout: 5m
-  smtp_smarthost: 'smtp.example.com:587'  # TODO: Konfiguriere SMTP-Server
+  smtp_smarthost: 'smtp.example.com:587'  # TODO: Ersetzen Sie dies durch Ihren SMTP-Server
   smtp_from: 'alertmanager@satlotto.com'
   smtp_auth_username: 'username'  # TODO: SMTP-Benutzer
   smtp_auth_password: 'password'  # TODO: SMTP-Passwort
@@ -19,59 +19,49 @@ receivers:
         send_resolved: true
 
 groups:
-  - name: bitcoin-lotto
+  - name: sat-lotto-operations
     rules:
-      # Benötigt bitcoin-prometheus-exporter
-      - alert: BitcoindNotSynced
-        expr: bitcoin_sync_progress < 0.99
-        for: 5m
-        labels:
-          severity: 'critical'
-        annotations:
-          summary: "Bitcoin Core ist nicht vollständig synchronisiert."
-        send_resolved: true
-
-      - alert: HighAPILatency
-        expr: response_time_histogram{job="backend"} > 1
-        for: 2m
-        labels:
-          severity: 'warning'
-        annotations:
-          summary: "Hohe API-Latenz im Backend."
-        send_resolved: true
-
-      - alert: LNDNoChannels
-        expr: lnd_channels_count == 0
-        for: 5m
-        labels:
-          severity: 'critical'
-        annotations:
-          summary: "Keine offenen Lightning-Channels."
-        send_resolved: true
-
-      - alert: DBConnectionError
+      # CRITICAL: Backend-Service ist komplett ausgefallen (Fehler in DB, Start, oder Greenlight-Konnektivität)
+      - alert: BackendServiceDown
         expr: up{job="backend"} == 0
         for: 2m
         labels:
           severity: 'critical'
         annotations:
-          summary: "Backend-Datenbank nicht erreichbar."
+          summary: "CRITICAL: Das Backend ist nicht erreichbar."
+          description: "Der Backend-Container ist ausgefallen. Mögliche Ursachen: Datenbankverbindung, Greenlight-Fehler oder Startfehler."
         send_resolved: true
 
+      # WARNING: Hohe Latenz bei API-Aufrufen
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.9, rate(response_time_histogram_bucket{job="backend"}[5m])) > 1
+        for: 2m
+        labels:
+          severity: 'warning'
+        annotations:
+          summary: "WARNUNG: Hohe API-Latenz (90. Perzentil > 1 Sekunde)."
+          description: "Die meisten API-Anfragen benötigen länger als 1 Sekunde. Erhöhte Last oder Datenbank-Engpass."
+        send_resolved: true
+
+      # WARNING: Niedriger Durchsatz (Zu wenige Tickets in den letzten 5 Minuten)
+      - alert: TicketThroughputError
+        # Schlägt Alarm, wenn der Durchschnitt der neu erstellten Invoices in den letzten 5m unter 0.1 pro Sekunde (6/Minute) liegt.
+        expr: rate(sat_lotto_invoices_created_total[5m]) < 0.1
+        for: 5m
+        labels:
+          severity: 'warning'
+        annotations:
+          summary: "WARNUNG: Niedriger Ticket-Durchsatz."
+          description: "Es wurden weniger als 6 Rechnungen pro Minute erstellt. Möglicher Anzeigefehler im Frontend oder Greenlight-Fehler."
+        send_resolved: true
+
+      # WARNING: Hohe Latenz im Nostr-Relay (optional)
       - alert: NostrRelayLatency
         expr: nostr_relay_response_time{job="nostr-relay"} > 2
         for: 2m
         labels:
           severity: 'warning'
         annotations:
-          summary: "Hohe Latenz im Nostr-Relay."
-        send_resolved: true
-
-      - alert: TicketThroughputError
-        expr: rate(sat_lotto_tickets_total[5m]) < 0.1
-        for: 5m
-        labels:
-          severity: 'warning'
-        annotations:
-          summary: "Niedriger Ticket-Durchsatz."
+          summary: "WARNUNG: Hohe Latenz im Nostr-Relay."
+          description: "Nostr-Events (Commitments) werden nur langsam veröffentlicht."
         send_resolved: true
